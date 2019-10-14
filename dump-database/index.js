@@ -145,16 +145,21 @@ async function run() {
     dbPort: core.getInput("db-port", { required: true })
   };
 
-  // Apply all migrations
-  const appliedMigrations = await applyMigrations();
+  try {
+    // Apply all migrations
+    const appliedMigrations = await applyMigrations();
 
-  // Dump the database to a file
-  const hasChanged = await dumpDatabase({ ...dbConfig, outputPath });
+    // Dump the database to a file
+    const hasChanged = await dumpDatabase({ ...dbConfig, outputPath });
 
-  await commitFile({ outputPath, octokit, branch });
+    await commitFile({ outputPath, octokit, branch });
 
-  if (hasChanged) {
-    await createPullRequest({ octokit, branch });
+    if (hasChanged) {
+      await createPullRequest({ octokit, branch });
+    }
+  } catch (error) {
+    console.log("Something went wrong", error);
+    core.setFailed(error.message);
   }
 }
 
