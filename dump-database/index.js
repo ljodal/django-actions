@@ -22,7 +22,7 @@ async function applyMigrations() {
 }
 
 /**
- * Dump the database using psql and check if the output file has changed.
+ * Dump the database using pg_dump and check if the output file has changed.
  */
 async function dumpDatabase({
   dbName,
@@ -30,30 +30,30 @@ async function dumpDatabase({
   dbPort,
   dbUser,
   dbPass,
+  dockerImage,
   outputPath
 }) {
   // Run pg_dump and send the output to the specified path
-  await exec.exec(
+  await exec.exec("docker", [
+    "run",
+    "-v",
+    `${outputPath}:${outputPath}`,
+    "-e",
+    `PGPASSWORD=${dbPass}`,
+    dockerImage,
     "pg_dump",
-    [
-      "-h",
-      dbHost,
-      "-p",
-      dbPort,
-      "-d",
-      dbName,
-      "-U",
-      dbUser,
-      "--no-owner",
-      "-f",
-      outputPath
-    ],
-    {
-      env: {
-        PGPASSWORD: dbPass
-      }
-    }
-  );
+    "-h",
+    dbHost,
+    "-p",
+    dbPort,
+    "-d",
+    dbName,
+    "-U",
+    dbUser,
+    "--no-owner",
+    "-f",
+    outputPath
+  ]);
 
   // Capture stdout so we can parse it for unapplied migrations.
   const lines = [];
@@ -136,6 +136,9 @@ async function run() {
   // Branch to create pr from
   const branch = core.getInput("branch", { required: true });
 
+  // Docker image to run pg_dump in
+  const outputPath = core.getInput("docker-image", { required: true });
+
   // Get database configuration
   const dbConfig = {
     dbName: core.getInput("db-name", { required: true }),
@@ -150,7 +153,11 @@ async function run() {
     const appliedMigrations = await applyMigrations();
 
     // Dump the database to a file
-    const hasChanged = await dumpDatabase({ ...dbConfig, outputPath });
+    const hasChanged = await dumpDatabase({
+      ...dbConfig,
+      outputPath,
+      dockerImage
+    });
 
     await commitFile({ outputPath, octokit, branch });
 

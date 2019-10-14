@@ -17,6 +17,7 @@ with:
   github-token: ${{ secrets.GITHUB_TOKEN }}
   output-path: 'path/to/file.sql'
   branch: 'tweak/update-db-dump'
+  docker-image: 'postgres:11-alpine',
   db-name: 'postgres'
   db-user: 'postgres'
   db-host: 'localhost'

@@ -10,6 +10,9 @@ inputs:
   branch:
     description: "Branch to commit file on"
     required: true
+  docker-image:
+    description: "Docker image to run pg_dump in"
+    required: true
   db-name:
     description: "Postgres database name"
     required: true
