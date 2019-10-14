@@ -1,0 +1,30 @@
+name: "Dump database"
+description: "Dump database to a file"
+inputs:
+  github-token:
+    description: "A token to authenticate against GitHub"
+    required: true
+  output-path:
+    description: "Path to file to write database dump to"
+    required: true
+  branch:
+    description: "Branch to commit file on"
+    required: true
+  db-name:
+    description: "Postgres database name"
+    required: true
+  db-user:
+    description: "Postgres username"
+    required: true
+  db-host:
+    description: "Postgres hostname"
+    required: true
+  db-port:
+    description: "Postgres port"
+    required: true
+  db-pass:
+    description: "Postgres password"
+    required: true
+runs:
+  using: "node12"
+  main: "index.js"
