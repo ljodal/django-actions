@@ -1,3 +1,4 @@
+const path = require("path");
 const core = require("@actions/core");
 const github = require("@actions/github");
 const exec = require("@actions/exec");
@@ -33,15 +34,20 @@ async function dumpDatabase({
   dockerImage,
   outputPath
 }) {
+  const currentDir = path.normalize(".");
+
   // Run pg_dump and send the output to the specified path
   await exec.exec("docker", [
     "run",
     "-v",
-    `${outputPath}:${outputPath}`,
+    `${currentDir}:/github/workspace`,
+    "--workdir",
+    "/github/workspace",
     "-e",
     `PGPASSWORD=${dbPass}`,
-    dockerImage,
+    "--entrypoint",
     "pg_dump",
+    dockerImage,
     "-h",
     dbHost,
     "-p",
