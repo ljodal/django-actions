@@ -93,15 +93,11 @@ async function run() {
   const branch = core.getInput("branch", { required: true });
 
   try {
-    // Apply all migrations
-    const appliedMigrations = await applyMigrations();
-
     // Dump the database to a file
     const hasChanged = await dbDumpHasChanged({ outputPath });
 
-    await commitFile({ outputPath, octokit, branch });
-
     if (hasChanged) {
+      await commitFile({ outputPath, octokit, branch });
       await createPullRequest({ octokit, branch });
     }
   } catch (error) {
