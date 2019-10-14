@@ -1,88 +1,35 @@
-const path = require("path");
 const core = require("@actions/core");
 const github = require("@actions/github");
 const exec = require("@actions/exec");
 
 /**
- * Run "migrate" to make sure the database is up to date.
- */
-async function applyMigrations() {
-  // Capture stdout so we can optionally include it in the output.
-  let stdout = "";
-  const options = {
-    listeners: {
-      stdout: data => {
-        stdout += data.toString();
-      }
-    }
-  };
-
-  await exec.exec("python", ["manage.py", "migrate"], options);
-
-  return stdout.trim();
-}
-
-/**
  * Dump the database using pg_dump and check if the output file has changed.
  */
-async function dumpDatabase({
-  dbName,
-  dbHost,
-  dbPort,
-  dbUser,
-  dbPass,
-  dockerImage,
-  outputPath
-}) {
-  const currentDir = path.resolve(".");
-
-  // Run pg_dump and send the output to the specified path
-  await exec.exec("docker", [
-    "run",
-    "-v",
-    `${currentDir}:/github/workspace`,
-    "--workdir",
-    "/github/workspace",
-    "-e",
-    `PGPASSWORD=${dbPass}`,
-    "--entrypoint",
-    "pg_dump",
-    dockerImage,
-    "-h",
-    dbHost,
-    "-p",
-    dbPort,
-    "-d",
-    dbName,
-    "-U",
-    dbUser,
-    "--no-owner",
-    "-f",
-    outputPath
-  ]);
-
+async function dbDumpHasChanged({ outputPath }) {
   // Capture stdout so we can parse it for unapplied migrations.
   const lines = [];
-  const options = {
+
+  // List modified or added files, to check if the output file has changed
+  await exec.exec("git", ["ls-files", "-mo", outputPath], {
     listeners: {
       stdline: line => lines.push(line)
     }
-  };
-
-  // List modified or added files, to check if the output file has changed
-  await exec.exec("git", ["ls-files", "-mo", outputPath], options);
+  });
 
   // Return true if the dump file has been modified
   return lines.includes(outputPath);
 }
 
 async function commitFile({ outputPath, octokit, branch }) {
+  // Stash the file, so we can check if it existed before
   await exec.exec("git", ["stash", "--", outputPath]);
 
+  // Check if the file already exists
   const result = await exec.exec("test", ["-f", outputPath], {
     ignoreReturnCode: true
   });
 
+  // If the file existed, get the git object hash
   let sha = undefined;
   if (result === 0) {
     const lines = [];
@@ -92,13 +39,16 @@ async function commitFile({ outputPath, octokit, branch }) {
     sha = lines[0];
   }
 
+  // Restore the modified file
   await exec.exec("git", ["stash", "pop"]);
 
+  // Get the base64 encoded content of the file
   var content = "";
   await exec.exec("base64", ["-i", outputPath], {
     listeners: { stdout: buffer => (content += buffer.toString()) }
   });
 
+  // Create or update the file
   await octokit.repos.createOrUpdateFile({
     ...github.context.repo,
     path: outputPath,
@@ -142,28 +92,12 @@ async function run() {
   // Branch to create pr from
   const branch = core.getInput("branch", { required: true });
 
-  // Docker image to run pg_dump in
-  const dockerImage = core.getInput("docker-image", { required: true });
-
-  // Get database configuration
-  const dbConfig = {
-    dbName: core.getInput("db-name", { required: true }),
-    dbUser: core.getInput("db-user", { required: true }),
-    dbHost: core.getInput("db-host", { required: true }),
-    dbPass: core.getInput("db-pass", { required: true }),
-    dbPort: core.getInput("db-port", { required: true })
-  };
-
   try {
     // Apply all migrations
     const appliedMigrations = await applyMigrations();
 
     // Dump the database to a file
-    const hasChanged = await dumpDatabase({
-      ...dbConfig,
-      outputPath,
-      dockerImage
-    });
+    const hasChanged = await dbDumpHasChanged({ outputPath });
 
     await commitFile({ outputPath, octokit, branch });
 
