@@ -58,7 +58,7 @@ async function commitFile({ outputPath, octokit, branch }) {
   });
 }
 
-async function makePullRequest({ octokit, branch }) {
+async function createPullRequest({ octokit, branch }) {
   console.log("Creating pull request");
 
   const pulls = octokit.pulls.list({
