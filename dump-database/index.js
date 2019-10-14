@@ -34,7 +34,7 @@ async function dumpDatabase({
   dockerImage,
   outputPath
 }) {
-  const currentDir = path.normalize(".");
+  const currentDir = path.resolve(".");
 
   // Run pg_dump and send the output to the specified path
   await exec.exec("docker", [
