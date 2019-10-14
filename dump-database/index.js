@@ -137,7 +137,7 @@ async function run() {
   const branch = core.getInput("branch", { required: true });
 
   // Docker image to run pg_dump in
-  const outputPath = core.getInput("docker-image", { required: true });
+  const dockerImage = core.getInput("docker-image", { required: true });
 
   // Get database configuration
   const dbConfig = {
