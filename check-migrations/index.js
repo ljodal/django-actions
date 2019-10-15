@@ -82,7 +82,10 @@ async function getUnappliedMigrations() {
  * Given an app label and migration name, get the SQL that migration will
  * run and optionally the locks the migraion will take in the database.
  */
-async function getMigrationOutput([appLabel, migrationName]) {
+async function getMigrationOutput(
+  { migrationLocksCommand },
+  [appLabel, migrationName]
+) {
   // Capture stdout so we can parse it for unapplied migrations.
   let stdout = "";
   const options = {
@@ -108,10 +111,17 @@ async function getMigrationOutput([appLabel, migrationName]) {
   const sql = stdout;
   stdout = "";
 
-  // Run command to get SQL output.
+  // Run command to get lock details.
   result = await exec.exec(
     "python",
-    ["-W", "ignore", "manage.py", "migrationlocks", appLabel, migrationName],
+    [
+      "-W",
+      "ignore",
+      "manage.py",
+      migrationLocksCommand,
+      appLabel,
+      migrationName
+    ],
     options
   );
 
@@ -170,6 +180,9 @@ async function run() {
   const githubToken = core.getInput("github-token", { required: true });
   const octokit = new github.GitHub(githubToken);
 
+  const migrationLocksCommand =
+    core.getInput("migrations-lock-command") || "migrationlocks";
+
   let checkRun;
 
   try {
@@ -203,7 +216,9 @@ async function run() {
 
     // Get SQL and optionally Postgres locks that a migration will take.
     const unappliedMigrationDetails = await Promise.all(
-      unappliedMigrations.map(getMigrationOutput)
+      unappliedMigrations.map(
+        getMigrationOutput.bind(undefined, { migrationLocksCommand })
+      )
     );
 
     // Render markdown for the details section.
