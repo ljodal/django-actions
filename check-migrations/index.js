@@ -181,7 +181,7 @@ async function run() {
   const octokit = new github.GitHub(githubToken);
 
   const migrationLocksCommand =
-    core.getInput("migrations-lock-command") || "migrationlocks";
+    core.getInput("migration-locks-command") || "migrationlocks";
 
   let checkRun;
 
