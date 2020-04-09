@@ -1,0 +1,9 @@
+name: "Black"
+description: "Run Black and annotate code with any warnings"
+inputs:
+  github-token:
+    description: "A token to authenticate against GitHub"
+    required: true
+runs:
+  using: "node12"
+  main: "index.js"
